@@ -116,14 +116,37 @@ class ProjectHubServer {
             properties: {
               project_name: { type: 'string', description: 'Project name' },
               description: { type: 'string', description: 'Description of the change' },
-              files: { 
-                type: 'array', 
+              files: {
+                type: 'array',
                 items: { type: 'string' },
                 description: 'Files affected by the change'
               },
               type: { type: 'string', description: 'Type of change (e.g., feature, bugfix, refactor)' }
             },
             required: ['project_name', 'description']
+          }
+        },
+        {
+          name: 'get_pending_changes',
+          description: 'Get uncommitted changes for a project',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              project_name: { type: 'string', description: 'Project name' }
+            },
+            required: ['project_name']
+          }
+        },
+        {
+          name: 'clear_committed_changes',
+          description: 'Mark changes as committed with a specific commit SHA',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              project_name: { type: 'string', description: 'Project name' },
+              commit_sha: { type: 'string', description: 'SHA of the commit' }
+            },
+            required: ['project_name', 'commit_sha']
           }
         },
         {
@@ -458,6 +481,35 @@ class ProjectHubServer {
               type: args.type
             });
             return { content: [{ type: 'text', text: JSON.stringify(change) }] };
+          }
+
+          case 'get_pending_changes': {
+            if (!isValidArgs<{ project_name: string }>(args, ['project_name'])) {
+              throw new McpError(ErrorCode.InvalidParams, 'Invalid get_pending_changes arguments');
+            }
+            const project = await this.projectManager.getProject(args.project_name);
+            if (!project) {
+              throw new McpError(ErrorCode.InvalidParams, `Project ${args.project_name} not found`);
+            }
+            const pendingChanges = project.changes.filter(change => !change.committed);
+            return { content: [{ type: 'text', text: JSON.stringify(pendingChanges) }] };
+          }
+
+          case 'clear_committed_changes': {
+            if (!isValidArgs<{ project_name: string; commit_sha: string }>(args, ['project_name', 'commit_sha'])) {
+              throw new McpError(ErrorCode.InvalidParams, 'Invalid clear_committed_changes arguments');
+            }
+            const project = await this.projectManager.getProject(args.project_name);
+            if (!project) {
+              throw new McpError(ErrorCode.InvalidParams, `Project ${args.project_name} not found`);
+            }
+            project.changes = project.changes.map(change => ({
+              ...change,
+              committed: true,
+              commitSha: args.commit_sha
+            }));
+            await this.projectManager.updateProject(args.project_name, project);
+            return { content: [{ type: 'text', text: 'Changes marked as committed' }] };
           }
 
           // GitHub Account Management
