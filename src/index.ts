@@ -592,6 +592,23 @@ class ProjectHubServer {
                 author: args.author as any
               }
             );
+
+            // Find the project associated with this repository
+            const projects = await this.projectManager.listProjects();
+            const project = projects.find(p => p.repository?.name === args.repo);
+
+            // If found, automatically mark changes as committed
+            if (project) {
+              await this.projectManager.updateProject(project.name, {
+                ...project,
+                changes: project.changes.map(change => ({
+                  ...change,
+                  committed: true,
+                  commitSha: result.sha
+                }))
+              });
+            }
+
             return { content: [{ type: 'text', text: JSON.stringify(result) }] };
           }
 
