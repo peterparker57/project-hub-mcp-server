@@ -68,3 +68,15 @@ Merge two branches in a repository.
 - **base**: Base branch name
 - **head**: Head branch name
 - **message**: Merge commit message (optional)
+
+### Pull Request Management
+
+#### create_pull_request
+Create a new pull request.
+- **repo**: Repository name
+- **title**: Pull request title
+- **head**: Head branch name
+- **base**: Base branch name
+- **body**: Pull request description (optional)
+- **draft**: Create as draft PR (optional)
+- **maintainer_can_modify**: Allow maintainers to modify (optional)
