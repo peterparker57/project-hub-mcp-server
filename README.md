@@ -4,7 +4,7 @@ An MCP server providing project management and GitHub integration capabilities. 
 
 ## Features
 
-- Project creation and management with case-insensitive search
+- Project creation and management with flexible, case-insensitive, partial name search
 - Change tracking and version control
 - GitHub repository integration
 - Source file scanning and monitoring
@@ -24,12 +24,8 @@ Create a new project with local and remote repository management.
 - **description**: Project description
 
 #### find_project
-Find a project by name (case-insensitive).
+Find a project by name (flexible, case-insensitive, partial match). Returns detailed project information including changes and notes.
 - **name**: Project name to search for
-
-#### get_project
-Get project details including repository info.
-- **name**: Project name
 
 #### list_projects
 List all projects with optional filtering.
@@ -131,9 +127,9 @@ await mcp.use("project-hub", "create_project", {
   description: "A new TypeScript project"
 });
 
-// Find a project (case-insensitive)
+// Find a project (flexible name search)
 await mcp.use("project-hub", "find_project", {
-  name: "my-project" // Works with "My-Project", "MY-PROJECT", etc.
+  name: "my-project" // Works with "My-Project", "MY-PROJECT", "my project notes", etc.
 });
 
 // Record a change
@@ -141,7 +137,7 @@ await mcp.use("project-hub", "record_change", {
   project_name: "my-project",
   description: "Added new feature",
   type: "feature",
-  files: ["src/feature.ts"]
+  files": ["src/feature.ts"]
 });
 ```
 
@@ -188,7 +184,7 @@ await mcp.use("project-hub", "create_pull_request", {
   base: "main",
   body: "This PR adds a new feature",
   draft: false,
-  maintainer_can_modify: true
+  maintainer_can_modify": true
 });
 
 // After PR review, merge the branches
