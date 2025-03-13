@@ -1,18 +1,38 @@
 # Project Hub MCP Server
 
-An MCP server providing project management and GitHub integration capabilities. This server enables managing local projects, tracking changes, and synchronizing with GitHub repositories.
+An MCP server providing comprehensive project management, local Git functionality, and GitHub integration capabilities. This server enables managing local projects, tracking changes, creating local commits, and synchronizing with GitHub repositories.
 
 ## Features
 
+### Project Management
 - Project creation and management with flexible, case-insensitive, partial name search
-- Change tracking and version control
-- GitHub repository integration
-- Source file scanning and monitoring
-- Automated commit management
-- Multi-account GitHub support
-- Branch management and pull request support
-- Project notes and documentation
+- Source file scanning and monitoring with customizable exclusion patterns
+- Project metadata tracking and updates
+
+### Local Git Functionality
+- Local commit creation and management without requiring GitHub
+- Branch management (create, switch, list)
+- File snapshots with metadata (size, creation time, modification time)
+- Restore functionality to revert to previous commits or branches
+- Clone functionality to create new instances from commits or branches
+
+### Change Tracking
+- Record and track changes with associated files
+- Categorize changes by type (feature, fix, refactor, etc.)
+- Link changes to commits for comprehensive history
+
+### Notes System
+- Create and manage project notes with rich markdown content
+- Categorize and tag notes for better organization
+- Search functionality to find relevant documentation
+
+### GitHub Integration
+- Repository management (create, update, delete, rename)
+- Commit management with file content tracking
+- Branch operations (create, delete, merge)
+- Pull request creation and management
 - Repository cloning and local setup
+- Multi-account GitHub support
 
 ## Tools
 
@@ -64,6 +84,7 @@ Record a change in a project.
 - **projectId**: Project ID
 - **type**: Change type
 - **description**: Change description
+- **files**: List of file paths affected by this change (optional)
 
 #### get_pending_changes
 Get pending changes for a project.
@@ -72,6 +93,91 @@ Get pending changes for a project.
 #### clear_committed_changes
 Clear committed changes for a project.
 - **projectId**: Project ID
+
+### Local Git Functionality
+
+#### init_local_repository
+Initialize a local Git repository for a project.
+- **projectId**: Project ID
+
+#### create_local_commit
+Create a local commit from pending changes.
+- **projectId**: Project ID
+- **message**: Commit message
+- **authorName**: Author name (optional)
+- **authorEmail**: Author email (optional)
+
+#### get_local_commit_history
+Get local commit history for a project.
+- **projectId**: Project ID
+
+#### create_local_branch
+Create a new local branch.
+- **projectId**: Project ID
+- **name**: Branch name
+- **startingCommitId**: Starting commit ID (optional)
+
+#### switch_local_branch
+Switch to a different local branch.
+- **projectId**: Project ID
+- **branchName**: Branch name
+
+#### list_local_branches
+List all local branches for a project.
+- **projectId**: Project ID
+
+#### restore_to_local_commit
+Restore project files to a specific local commit.
+- **projectId**: Project ID
+- **commitId**: Commit ID to restore to
+
+#### restore_to_local_branch
+Restore project files to a specific local branch.
+- **projectId**: Project ID
+- **branchName**: Branch name to restore to
+
+#### restore_local_commit_to_new_location
+Restore a specific local commit to a new folder location.
+- **projectId**: Project ID
+- **commitId**: Commit ID to restore
+- **newLocation**: New folder path to restore to
+
+#### restore_local_branch_to_new_location
+Restore a specific local branch to a new folder location.
+- **projectId**: Project ID
+- **branchName**: Branch name to restore
+- **newLocation**: New folder path to restore to
+
+#### push_local_commits
+Push local commits to GitHub.
+- **projectId**: Project ID
+- **repo**: Repository name
+- **branch**: Branch name (optional)
+
+#### force_local_commit
+Force a local commit of all files in the project, regardless of pending changes.
+- **projectId**: Project ID
+- **message**: Commit message
+- **authorName**: Author name (optional)
+- **authorEmail**: Author email (optional)
+
+#### cleanup_project_files
+Removes records of non-existent files from the Project Hub data for a project.
+- **projectId**: Project ID
+
+### File Snapshot Management
+
+#### get_file_snapshots
+Get file snapshots for a commit.
+- **commitId**: Commit ID
+
+#### get_file_snapshots_metadata
+Get file snapshots metadata for a commit (without file content).
+- **commitId**: Commit ID
+
+#### get_file_content
+Get file content for a snapshot.
+- **snapshotId**: Snapshot ID
 
 ### Note Management
 
@@ -234,11 +340,35 @@ Create a new pull request.
 #### list_tools
 List all available tools in the Project Hub MCP.
 
+## Architecture
+
+### Database Schema
+
+The Project Hub MCP server uses SQLite for data storage with the following key tables:
+
+- **projects**: Stores project metadata
+- **changes**: Tracks changes made to projects
+- **notes**: Stores project documentation
+- **source_files**: Catalogs files in projects
+- **local_commits**: Stores local commit information
+- **local_branches**: Tracks branch information
+- **file_snapshots**: Stores file content and metadata at commit time
+- **commit_changes**: Maps commits to changes
+
+### Key Components
+
+- **ProjectManager**: Handles project CRUD operations and metadata
+- **LocalGitService**: Manages local Git functionality
+- **FileSnapshotService**: Handles file snapshot operations
+- **GitHubService**: Interfaces with GitHub API
+- **StorageService**: Manages database operations
+- **SourceScanner**: Scans and catalogs project files
+
 ## Installation
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/project-hub-mcp-server.git
+git clone https://github.com/peterparker57/project-hub-mcp-server.git
 cd project-hub-mcp-server
 ```
 
@@ -263,13 +393,31 @@ Add the server to your MCP settings file:
       "command": "node",
       "args": ["path/to/project-hub-mcp-server/dist/index.js"],
       "env": {
+        "NODE_ENV": "development",
+        "DEFAULT_PRIVATE": "true",
         "DEFAULT_OWNER": "your-github-username",
-        "GITHUB_TOKEN_your-github-username": "your-github-token"
-      }
+        "GITHUB_TOKEN": "your-github-token",
+        "GIT_PATH": "C:\\Program Files\\Git\\bin\\git.exe"
+      },
+      "alwaysAllow": [
+        "list_projects",
+        "find_project",
+        "get_pending_changes",
+        "get_local_commit_history",
+        "list_local_branches"
+      ]
     }
   }
 }
 ```
+
+### Environment Variables
+
+- **NODE_ENV**: Set to "development" or "production"
+- **DEFAULT_PRIVATE**: Whether new repositories should be private by default
+- **DEFAULT_OWNER**: Default GitHub username for repository operations
+- **GITHUB_TOKEN**: GitHub personal access token with appropriate permissions
+- **GIT_PATH**: Path to Git executable for local Git operations
 
 ## Usage Examples
 
@@ -291,16 +439,65 @@ await mcp.use("project-hub", "find_project", {
 
 // Record a change
 await mcp.use("project-hub", "record_change", {
-  project_name: "my-project",
+  projectId: "project-id",
   description: "Added new feature",
   type: "feature",
-  files": ["src/feature.ts"]
+  files: ["src/feature.ts"]
 });
 
 // Scan project files
 await mcp.use("project-hub", "scan_project_files", {
   projectId: "project-id",
   excludePatterns: ["node_modules", "\\.git", "dist", "build"]
+});
+```
+
+### Local Git Functionality
+
+```typescript
+// Initialize local repository
+await mcp.use("project-hub", "init_local_repository", {
+  projectId: "project-id"
+});
+
+// Create a local commit
+await mcp.use("project-hub", "create_local_commit", {
+  projectId: "project-id",
+  message: "Implemented new feature",
+  authorName: "John Doe",
+  authorEmail: "john@example.com"
+});
+
+// Create a new branch
+await mcp.use("project-hub", "create_local_branch", {
+  projectId: "project-id",
+  name: "feature/new-feature"
+});
+
+// Switch to a branch
+await mcp.use("project-hub", "switch_local_branch", {
+  projectId: "project-id",
+  branchName: "feature/new-feature"
+});
+
+// Restore to a previous commit
+await mcp.use("project-hub", "restore_to_local_commit", {
+  projectId: "project-id",
+  commitId: "commit-id"
+});
+
+// Clone a branch to a new location
+await mcp.use("project-hub", "restore_local_branch_to_new_location", {
+  projectId: "project-id",
+  branchName: "main",
+  newLocation: "C:/Projects/new-clone"
+});
+
+// Push local commits to GitHub
+await mcp.use("project-hub", "push_local_commits", {
+  projectId: "project-id",
+  repo: "my-project",
+  branch: "main"
 });
 ```
 
@@ -391,6 +588,20 @@ npm test
 ```bash
 npm run build
 ```
+
+## Recent Enhancements
+
+### Local Git Functionality (March 2025)
+- Added comprehensive local Git functionality with commits, branches, and file snapshots
+- Implemented restore capabilities to revert to previous states
+- Added clone functionality to create new instances from commits or branches
+- Enhanced file snapshots with metadata tracking (size, creation time, modification time)
+
+### Project Management Improvements (February 2025)
+- Added clone_repository tool to clone GitHub repositories to specified folders
+- Implemented scan_project_files tool to scan project directories and catalog source files
+- Enhanced project search with flexible, case-insensitive, partial name matching
+- Improved file tracking with better metadata
 
 ## Contributing
 
